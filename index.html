@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 网页小图标：用 emoji 直接生成，避免浏览器找不到 favicon.ico 报 404 -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💗</text></svg>"
+    />
+    <style>
+      body {
+        text-align: center;
+        background-color: #d9d6d6;
+        font-family: "Microsoft YaHei";
+      }
+      h1 {
+        color: #000000; /*CSS的注释写法*/
+      }
+      h2 {
+        color: #f79d76;
+      }
+      button {
+        background-color: #ff6dbb;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      .sexy-mode {
+        background-color: #f80285;
+        color: #fffeff;
+        font-size: 20px;
+      }
+      /* 修复：原来写了两段 #playing-list，同一样式合并成一段更清晰 */
+      #playing-list {
+        margin-top: 10px;
+        padding: 8px; /* 注意：padding: 8px 会覆盖下面的 padding-bottom，写在后面才生效 */
+        padding-bottom: 20px;
+        width: 60%; /* width: 60% 和 max-width: 400px 同时存在时取较小值 */
+        max-width: 400px;
+        margin-left: auto; /* 左右 auto = 盒子水平居中 */
+        margin-right: auto;
+        border: 1px solid #000000;
+        border-radius: 10px;
+      }
+      #add-btn {
+        padding: 8px 15px;
+      }
+      /* 保存按钮：复用 button 默认外观，仅微调内边距 */
+      #save-btn {
+        padding: 8px 15px;
+      }
+      #playing-list li {
+        text-align: left;
+        margin-top: 10px;
+      }
+      .delete-btn {
+        margin-left: 10px;
+        background-color: #df0000;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      /* ==================== 游戏入口按钮 ====================
+         游戏都在独立的网页里（tetris.html / slot.html）。
+         下面这个 .game-entry 本质就是一个普通的 <a> 链接，
+         只是用 CSS 做成了大按钮的样子（背景图 + 圆角 + 发光边框）。
+         改成 class（类）是因为两个游戏入口要共用同一套样式，
+         id 只能一个页面用一次，class 可以重复使用。 */
+      .game-entry {
+        display: block; /* 块级元素，独占一行，两个入口上下排列 */
+        width: fit-content; /* 宽度随内容收缩，配合 margin auto 才能居中 */
+        margin: 25px auto; /* 上下留空、左右 auto = 水平居中 */
+        padding: 25px 70px;
+        background-image:
+          linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)),
+          url("images/大心脏.jpg"); /* 入口按钮也用你选的那张图当背景 */
+        background-size: cover; /* 铺满且不变形 */
+        background-position: center;
+        color: #ffffff;
+        font-size: 24px;
+        font-weight: bold;
+        text-decoration: none; /* 去掉链接的下划线 */
+        border: 2px solid #f80285;
+        border-radius: 12px;
+        box-shadow: 0 0 12px rgba(248, 2, 133, 0.4); /* 粉色发光效果 */
+      }
+      /* :hover = 鼠标悬停时的状态：稍微放大一点，提示"可以点" */
+      .game-entry:hover {
+        transform: scale(1.05); /* 放大到 105% */
+      }
+
+      /* 老虎机入口：共用 .game-entry 的布局，只换配色和背景，
+         用金色边框区分两个入口 */
+      #slot-entry {
+        border-color: #ffd700; /* 金色边框 */
+        background-image:
+          linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+          linear-gradient(#3d0000, #000); /* 没有专门图片就用深红渐变代替 */
+        box-shadow: 0 0 12px rgba(255, 215, 0, 0.45); /* 金色发光 */
+      }
+    </style>
+    <title>我的第一个网页</title>
+  </head>
+  <body>
+    <h1>我的第一个网页</h1>
+    <p>我是一个正在学习网页开发新手</p>
+    <ul>
+      <li>
+        我的第一个目标是制作一个可交互网页<br />下一个阶段目标是做一个Ai女友
+      </li>
+      <li>工具是VS code</li>
+      <li>我计划自己手搓+AI</li>
+      <li>
+        <a href="wangziao.html">实验室作业(计划性职业规划)</a>
+      </li>
+    </ul>
+    <hr />
+    <img src="images/avatar.jpg" alt="可口的豆包" width="200" />
+    <h2>可口的豆包</h2>
+    <h2>和我互动吧~</h2>
+    <input type="text" placeholder="告诉我想怎么玩" />
+    <button id="my-btn">快~来~吧~</button>
+    <p id="msg"></p>
+    <!--准备一个空段落,用来显示变化-->
+    <div id="link-box" style="display: none">
+      <!--默认隐藏-->
+      <a
+        href="https://www.bilibili.com/video/BV1GJ411x7h7?t=0.0"
+        target="_blank"
+        >你要的在这里哦~</a
+      >
+    </div>
+    <div id="playing-list">
+      <h2>你的一些play清单</h2>
+      <!-- 修复：typo 改为 type；input 的 id 从 playing-list 改为 playing-input（一个页面 id 不能重复） -->
+      <input
+        type="text"
+        id="playing-input"
+        placeholder="告诉我你的那些零碎的想法吧~"
+      />
+      <button id="add-btn" type="button">说吧~</button>
+      <!-- 保存按钮：手动触发保存（其实每次新增/删除已经自动保存，这里只是给个反馈） -->
+      <button id="save-btn" type="button">保存清单</button>
+      <!-- 修复：ul 的 id 从 playing-list 改为 playing-ul（外层 div 已占用 playing-list） -->
+      <ul id="playing-ul">
+        <!--添加的内容会由JS动态添加到这里-->
+      </ul>
+    </div>
+    <br /><!--强制换行-->
+    <a href="https://www.bilibili.com/video/BV1GJ411x7h7?t=0.0">GTA6 内测版</a>
+
+    <!-- ==================== 游戏入口：点击进入第二个网页 ====================
+         href="tetris.html" 就是"链接到同文件夹里的 tetris.html 文件"。
+         想让它在新标签页打开的话，加上 target="_blank" 属性即可 -->
+    <a href="tetris.html" class="game-entry">🎮 进入俄罗斯方块</a>
+
+    <!-- ==================== 老虎机入口：第二个游戏网页 slot.html ====================
+         和上面一样是普通 <a> 链接，class 共用同一套按钮样式，
+         额外的 id="slot-entry" 只用来换金色配色 -->
+    <a href="slot.html" class="game-entry" id="slot-entry">🎰 进入幸运老虎机</a>
+
+    <script>
+      //第一段JS代码在这里写
+      //1获取按钮和文字元素
+      const btn = document.getElementById("my-btn");
+      const msg = document.getElementById("msg");
+      //2.绑定点击事件
+      btn.addEventListener("click", function () {
+        //3之后干什么指令
+        document.body.classList.toggle("sexy-mode"); //切换sexy-mode类
+        msg.innerHTML = "收到哦~我都听你的~<br>这样是不是更加sexy了呢~"; //改变文字内容
+        btn.textContent = document.body.classList.contains("sexy-mode")
+          ? "不喜欢吗~"
+          : "快~来~吧~"; //改变按钮文字
+        //显示隐藏的链接
+        const linkBox = document.querySelector("#link-box");
+        linkBox.style.display = document.body.classList.contains("sexy-mode")
+          ? "block"
+          : "none";
+      });
+      //1.获取需要的元素
+      // 修复：变量名 plyingInput 拼写错误改为 playingInput（与下方使用处保持一致）
+      // 修复：id 已拆分为 playing-input 和 playing-ul，不能都查 #playing-list
+      const playingInput = document.querySelector("#playing-input");
+      const addBtn = document.querySelector("#add-btn");
+      // 修复：DOM 元素改名 ulDom（之前 playingList 既是 DOM 又被当数组用，全乱套）
+      const ulDom = document.querySelector("#playing-ul");
+      //这是播放列表的核心数据
+      // 修复：数组改名 todoList（统一规范，DOM 和数据绝不混名）
+      let todoList = [];
+      //2.给"添加"按钮绑定事件
+      addBtn.addEventListener("click", function () {
+        const text = playingInput.value.trim(); //去掉前后
+        if (text === "") {
+          alert("请输入内容哦~");
+          return;
+        }
+
+        //1把数据推入数组（对象形式）
+        // 修复：原来写 playingList.push —— playingList 是 ul DOM，没有 push 方法
+        todoList.push({ text: text, completed: false });
+        //2保存到 localStorage
+        saveList();
+        //3清空输入框
+        playingInput.value = "";
+        //4渲染列表
+        renderPlayList();
+      });
+      function renderPlayList() {
+        // 修复：原来写 playinglist.innerHTML —— playinglist 是数组，没有 innerHTML
+        ulDom.innerHTML = ""; // 清空列表
+        // 修复：playlist 这个变量根本不存在（没声明过），应改为 todoList
+        todoList.forEach(function (item, index) {
+          const newli = document.createElement("li");
+          newli.textContent = item.text; //取对象里的文本
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "删除";
+          deleteBtn.classList.add("delete-btn");
+
+          //删除逻辑；从数组中删除该项，重新渲染列表
+          deleteBtn.addEventListener("click", function () {
+            // 修复：原来写 playingList.splice —— playingList 是 DOM，应改用 todoList 数组
+            todoList.splice(index, 1); //删掉数组对应的一项
+            saveList();
+            renderPlayList();
+          });
+
+          newli.appendChild(deleteBtn);
+          // 修复：appendChild 的目标是 ul DOM，必须用 ulDom
+          ulDom.appendChild(newli);
+        });
+      }
+      // ===== 保存功能模块 =====
+
+      // 工具函数：把数组存到 localStorage
+      function saveList() {
+        // localStorage 只能存字符串，所以把整个数组变成字符串
+        // 修复：存的是 todoList 数组，不是 playingList DOM
+        localStorage.setItem("my-playList", JSON.stringify(todoList));
+      }
+
+      // 工具函数：从 localStorage 恢复列表
+      //读出来是字符串，转回数组。如果没有，输出空数组
+      function loadList() {
+        const raw = localStorage.getItem("my-playList");
+        try {
+          // 修复：旧版本可能存过 innerHTML 或 DOM 对象（如 "{}"），
+          // 它们能被 JSON.parse 成功解析，但结果不是数组，没有 forEach 方法
+          const parsed = JSON.parse(raw);
+          // 修复：用 Array.isArray 判断"解析出来的真的是数组吗"，不是就清空
+          todoList = Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          // 解析直接报错 = 数据是 HTML 字符串等坏格式，清掉重来
+          localStorage.removeItem("my-playList");
+          todoList = [];
+        }
+        renderPlayList(); // 根据数组重新渲染列表
+      }
+
+      // 手动保存按钮：保存 + 弹窗反馈
+      const saveBtn = document.querySelector("#save-btn");
+      saveBtn.addEventListener("click", function () {
+        saveList();
+        alert("已保存到浏览器！刷新页面也不会丢~");
+      });
+
+      // 页面打开时自动恢复
+      loadList();
+    </script>
+  </body>
+</html>

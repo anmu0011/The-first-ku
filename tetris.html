@@ -1,0 +1,1297 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 移动端适配声明：不加的话手机浏览器会按 980px 宽的"桌面模拟模式"渲染，字小画面小 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>"
+    />
+    <title>俄罗斯方块 - 我的第二个网页</title>
+    <style>
+      body {
+        text-align: center;
+        background-color: #d9d6d6; /* 和主页同款背景 */
+        font-family: "Microsoft YaHei";
+        margin: 0;
+        padding: 15px;
+      }
+      /* 顶栏：标题 + 返回主页按钮，左右分布 */
+      #top-bar {
+        display: flex;
+        justify-content: space-between; /* 两端对齐 */
+        align-items: center;
+        max-width: 900px;
+        margin: 0 auto 10px auto; /* 上方和下方留空，左右 auto 居中 */
+      }
+      #top-bar h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      /* 返回主页按钮 */
+      #back-btn {
+        background-color: #ff6dbb;
+        color: #fff;
+        text-decoration: none; /* 去掉链接默认的下划线 */
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-size: 14px;
+      }
+      #back-btn:hover {
+        background-color: #f80285; /* 鼠标悬停时加深 */
+      }
+
+      /* ==================== 游戏区样式 ==================== */
+      #tetris-main {
+        display: flex; /* 弹性布局：画布和侧栏左右并排 */
+        justify-content: center; /* 水平居中 */
+        align-items: flex-start; /* 顶部对齐 */
+        gap: 20px;
+        flex-wrap: wrap; /* 窄屏自动换行 */
+      }
+      /* 主画布：★ 放大版 —— 12 列 × 40 像素 = 480 宽，22 行 × 40 像素 = 880 高
+         max-height 限制"显示尺寸"不超过浏览器视口高度的 88%，
+         画布和 <img> 一样有固有比例，只锁高、宽自动等比缩小 —— 大屏满幅、小屏不溢出 */
+      #tetris-canvas {
+        background-image:
+          linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)),
+          url("images/大心脏.jpg"); /* 换背景图只改这里的文件名 */
+        background-size: cover;
+        background-position: center;
+        border: 2px solid #000000;
+        border-radius: 6px;
+        max-height: 88vh; /* vh = 视口高度的百分比单位 */
+        max-width: 100%; /* 手机上也不超出屏幕宽 */
+        width: auto;
+        height: auto;
+      }
+      /* 右侧信息栏 */
+      #tetris-side {
+        text-align: left;
+        font-size: 15px;
+        min-width: 180px;
+        max-width: 240px;
+      }
+      #tetris-side p {
+        margin: 6px 0;
+      }
+      #tetris-score {
+        color: #f80285;
+        font-weight: bold;
+        font-size: 24px;
+      }
+      /* "下一个方块"预览：160×160 像素（旧版 120×120） */
+      #tetris-next {
+        background-color: #111111;
+        border: 2px solid #000000;
+        border-radius: 6px;
+      }
+      /* 开始/暂停/音效按钮排（两行四键，用 class 因为有两行） */
+      .tetris-btn-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .tetris-btn-row button {
+        flex: 1; /* 平分一行宽度 */
+        background-color: #ff6dbb;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 12px 5px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .tetris-btn-row button:hover {
+        background-color: #f80285;
+      }
+      /* ★ 闯关模式的 Boss 信息栏：名字 + 血条 + 特性 */
+      #tetris-boss {
+        margin-top: 10px;
+        padding: 8px;
+        border: 1px solid #b03060;
+        border-radius: 6px;
+        background-color: #fff5f8;
+        font-size: 13px;
+      }
+      /* 血条外框 */
+      .boss-hp {
+        height: 12px;
+        background-color: #e0d0d8;
+        border-radius: 6px;
+        margin: 6px 0;
+        overflow: hidden; /* 让里面的填充条不出框 */
+      }
+      /* 血条填充：红→橙渐变，宽度=剩余血量百分比 */
+      .boss-hp-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff4d4d, #ff8a00);
+        transition: width 0.3s; /* 掉血时平滑缩短 */
+      }
+      .boss-desc {
+        color: #777777;
+        margin: 2px 0;
+        font-size: 12px;
+      }
+      #tetris-tip {
+        color: #666666;
+        font-size: 13px;
+        line-height: 1.7;
+      }
+      /* 分数记录区 */
+      #tetris-records {
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      #tetris-records p {
+        margin: 4px 0;
+      }
+      /* 奖励卡片 —— 未解锁（灰色虚线） */
+      .reward-card {
+        margin-top: 8px;
+        padding: 8px;
+        font-size: 13px;
+        line-height: 1.5;
+        background-color: #fafafa;
+        border: 1px dashed #bbbbbb;
+        border-radius: 6px;
+        color: #999999;
+      }
+      /* 奖励卡片 —— 已解锁（粉色高亮 + 发光） */
+      .reward-card.unlocked {
+        background-color: #fff3fa;
+        border: 1px solid #ff6dbb;
+        color: #333333;
+        box-shadow: 0 0 8px rgba(248, 2, 133, 0.35);
+      }
+      .reward-card a {
+        color: #f80285;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 顶栏：右边是返回主页的链接（就是普通 <a>，样式做成了按钮的样子） -->
+    <div id="top-bar">
+      <h1>🎮 俄罗斯方块</h1>
+      <a href="index.html" id="back-btn">← 返回主页</a>
+    </div>
+
+    <!-- 游戏主体：左画布 + 右侧栏 -->
+    <div id="tetris-main">
+      <!-- ★ 窄板精细版画布：12 列 × 24 像素 = 288 宽，30 行 × 24 像素 = 720 高
+           宽度回到经典的 12 列，小格子和 30 行的高度保留（必须和 JS 里的数值对应） -->
+      <canvas id="tetris-canvas" width="288" height="720"></canvas>
+
+      <div id="tetris-side">
+        <p>得分：<span id="tetris-score">0</span></p>
+        <p>等级：<span id="tetris-level">1</span></p>
+        <p>消除行数：<span id="tetris-lines">0</span></p>
+
+        <!-- ★ Boss 信息栏：只在闯关模式显示，内容由 renderBoss() 生成 -->
+        <div id="tetris-boss" style="display: none"></div>
+
+        <p>下一个：</p>
+        <canvas id="tetris-next" width="160" height="160"></canvas>
+
+        <!-- ★ 双模式：第一行选模式开始，第二行暂停/音效 -->
+        <div class="tetris-btn-row">
+          <button id="tetris-start-btn" type="button">🏆 计分模式</button>
+          <button id="tetris-boss-btn" type="button">⚔️ 闯关模式</button>
+        </div>
+        <div class="tetris-btn-row">
+          <button id="tetris-pause-btn" type="button">暂停</button>
+          <!-- ★ 音效开关：声音全部由代码现场合成（Web Audio），不需要任何音频文件 -->
+          <button id="tetris-sound-btn" type="button">🔊 音效开</button>
+        </div>
+
+        <p id="tetris-tip">
+          键盘操作：<br />
+          ← → 左右移动（按住可连发）<br />
+          ↑ 旋转方块<br />
+          ↓ 加速下落（按住可连发）<br />
+          空格 一步落到底<br />
+          P 或「暂停」按钮 暂停/继续
+        </p>
+
+        <!-- 分数记录区：内容由 JS 从 localStorage 读出来生成 -->
+        <div id="tetris-records"></div>
+
+        <!-- 奖励区：内容由 JS 根据得分动态生成 -->
+        <div id="tetris-reward"></div>
+      </div>
+    </div>
+
+    <!-- ==================== 俄罗斯方块：JS 逻辑 ==================== -->
+    <script>
+      /* ============================================================
+         1. 基础配置：画布、格子大小、方块形状、颜色
+         ============================================================ */
+
+      // ★ 窄板精细版：12 列 × 30 行 = 360 格
+      // 宽度收回到经典的 12 列（20 列那版太宽了），24 像素的小格子和 30 行高度保留
+      // 画布尺寸 = 12 × 24 = 288 宽，30 × 24 = 720 高（和 HTML 里 canvas 的属性一致）
+      // 后面所有代码都用 COLS / ROWS 这两个名字计算，所以只改这三行就全部自动适配
+      const COLS = 12;
+      const ROWS = 30;
+      const BLOCK = 24;
+
+      const canvas = document.getElementById("tetris-canvas"); // 主画布
+      const ctx = canvas.getContext("2d"); // 画布上下文：所有绘制都要靠它
+      const nextCanvas = document.getElementById("tetris-next"); // "下一个方块"预览画布
+      const nextCtx = nextCanvas.getContext("2d");
+
+      // 页面上那些会变动的元素，先一次性取出来，后面直接用
+      const scoreEl = document.getElementById("tetris-score");
+      const levelEl = document.getElementById("tetris-level");
+      const linesEl = document.getElementById("tetris-lines");
+      const rewardBox = document.getElementById("tetris-reward");
+      const startBtn = document.getElementById("tetris-start-btn");
+      const pauseBtn = document.getElementById("tetris-pause-btn"); // 暂停按钮
+      const recordsBox = document.getElementById("tetris-records"); // 分数记录区
+      const soundBtn = document.getElementById("tetris-sound-btn"); // ★ 音效开关按钮
+      const bossBtn = document.getElementById("tetris-boss-btn"); // ★ 闯关模式开始按钮
+      const bossBox = document.getElementById("tetris-boss"); // ★ Boss 信息栏
+
+      // 7 种方块形状。用二维数组表示：1 = 有方块，0 = 空
+      const SHAPES = {
+        I: [[1, 1, 1, 1]],
+        O: [
+          [1, 1],
+          [1, 1],
+        ],
+        T: [
+          [0, 1, 0],
+          [1, 1, 1],
+        ],
+        S: [
+          [0, 1, 1],
+          [1, 1, 0],
+        ],
+        Z: [
+          [1, 1, 0],
+          [0, 1, 1],
+        ],
+        J: [
+          [1, 0, 0],
+          [1, 1, 1],
+        ],
+        L: [
+          [0, 0, 1],
+          [1, 1, 1],
+        ],
+      };
+      // 每种方块对应的颜色（key 要和上面 SHAPES 的名字对上）
+      const COLORS = {
+        I: "#00e5ff",
+        O: "#ffe600",
+        T: "#c77dff",
+        S: "#4ade80",
+        Z: "#ff4d4d",
+        J: "#4d79ff",
+        L: "#ff9f43",
+      };
+      const SHAPE_KEYS = Object.keys(SHAPES);
+
+      /* ============================================================
+         2. ★★★ 奖励配置（你只需要改这一块） ★★★
+         ------------------------------------------------------------
+         score：达到多少分解锁这份奖励
+         title：奖励的名字，随便改
+         url  ：奖励链接，粘进双引号里即可
+         注意：必须按分数从低到高排列。改完保存、刷新网页立刻生效。
+         ============================================================ */
+      const REWARDS = [
+        {
+          score: 1000,
+          title: "🥉 初露锋芒",
+          url: "https://www.bilibili.com/video/BV18Vem6BEa9?t=0",
+        },
+        {
+          score: 1500,
+          title: "🥈 渐入佳境",
+          url: "https://www.bilibili.com/video/BV1eUhJ6FESm?t=0",
+        },
+        {
+          score: 2000,
+          title: "🥇 方块大师",
+          url: "https://www.bilibili.com/video/BV1N1ez6yEXz?t=0",
+        },
+        {
+          score: 4000,
+          title: "👑 终极奖励",
+          url: "https://www.bilibili.com/video/BV1Gbtu6pEW9?t=0",
+        },
+      ];
+
+      // 记录"已经解锁过"的奖励下标（0、1、2……），防止同一份奖励重复弹出
+      let unlockedRewards = [];
+
+      // 分数记录的数据（最近 3 局 + 历史最高分）
+      let recentScores = []; // 最近 3 局的得分，新的排在最前面
+      let highScore = 0; // 历史最高分
+      let newRecord = false; // 这一局是否破了纪录（结束画面会显示"新纪录！"）
+
+      /* ============================================================
+         3. 游戏状态数据 + 工具函数
+         ============================================================ */
+
+      let board = []; // 游戏面板：二维数组。0 表示空格，颜色字符串表示已落定的方块
+      let current = null; // 当前正在下落的方块，结构：{ key, shape, x, y }
+      let nextKey = null; // 下一个方块的名字（比如 "T"）
+      let score = 0; // 当前分数
+      let lines = 0; // 已消除的总行数
+      let level = 1; // 当前等级
+      let running = false; // 游戏是否进行中
+      let paused = false; // 是否暂停
+      let isGameOver = false; // 是否已结束
+      let dropCounter = 0; // 距离上一次下落累积了多少毫秒
+      let dropInterval = 600; // 方块多久自动下落一格（毫秒）
+      let lastTime = 0; // 上一帧的时间戳
+      let animationId = null; // requestAnimationFrame 的编号
+
+      // 自定义按键连发参数（DAS/ARR）—— 解决按住方向键的系统延迟
+      const DAS_DELAY = 160; // 按住多久后开始连发（毫秒）
+      const ARR_SPEED = 45; // 连发时多久动一格（毫秒）
+      const SOFT_SPEED = 45; // 按住 ↓ 软降时多久落一格
+      const heldMoves = { left: false, right: false, down: false }; // 哪些键正被按住
+      let dasCounter = 0;
+      let arrCounter = 0;
+      let softCounter = 0;
+
+      // ★ 消行动画状态：消行不再"瞬间消失"，而是先闪光 300ms 再消失
+      const CLEAR_DURATION = 300; // 闪光动画时长（毫秒）
+      let clearingRows = []; // 正在播放消行动画的行号列表
+      let clearTimer = 0; // 动画已经播了多久
+      // ★ 漂浮文字：消行后弹出"DOUBLE! +300"，往上飘并淡出
+      const POPUP_DURATION = 900; // 漂浮文字显示时长（毫秒）
+      let popup = null; // { text, timer }
+      const CLEAR_NAMES = ["", "SINGLE!", "DOUBLE!", "TRIPLE!", "TETRIS!"];
+
+      /* ============================================================
+         ★ 双模式 + 闯关模式 Boss 系统
+         mode："score" 计分模式（原玩法） / "boss" 闯关模式（无限 Boss 车轮战）
+         Boss 规则：消几行 = 对 Boss 造成几点伤害；血条清零 = 击败，立即换下一只。
+         5 种特色 Boss 无限循环，每循环一轮（lap）血量/速度/垫行频率全面加强。
+         ============================================================ */
+      let mode = "score";
+      const BOSS_TYPES = [
+        { name: "疾风", desc: "特性：方块下落加速", speed: 1.4, garbage: 0, hp: 6 },
+        { name: "巨石", desc: "特性：血量厚重", speed: 1.0, garbage: 0, hp: 11 },
+        { name: "地刺", desc: "特性：定期垫入垃圾行", speed: 1.0, garbage: 9000, hp: 8 },
+        { name: "幻影", desc: "特性：极速下落·血薄", speed: 1.8, garbage: 0, hp: 5 },
+        { name: "混沌", desc: "特性：加速＋垫垃圾行", speed: 1.2, garbage: 7000, hp: 10 },
+      ];
+      let bossNum = 0; // 当前第几只 Boss（从 1 开始）
+      let bossName = "";
+      let bossDesc = "";
+      let bossHP = 0; // 当前剩余血量
+      let bossMaxHP = 0; // 满血量（算血条百分比用）
+      let bossSpeed = 1; // 下落速度倍率（重力间隔除以它）
+      let bossGarbageMs = 0; // 垫垃圾行的间隔毫秒（0 = 这只不会垫）
+      let garbageTimer = 0; // 垫行计时器
+      let bossesDefeated = 0; // 本局已击败数
+      let bossBest = 0; // 历史最高击败数（存 localStorage）
+
+      // 生成第 n 只 Boss：类型循环取，强度按轮数递增
+      function makeBoss(n) {
+        const t = BOSS_TYPES[(n - 1) % BOSS_TYPES.length];
+        const lap = Math.floor((n - 1) / BOSS_TYPES.length); // 第几轮循环 = 狂化层数
+        bossName = "第 " + n + " 关 · " + t.name;
+        bossDesc = t.desc + (lap > 0 ? " · 狂化+" + lap : "");
+        bossMaxHP = bossHP = t.hp + lap * 3; // 每轮血量 +3
+        bossSpeed = t.speed + lap * 0.15; // 每轮速度 +0.15
+        bossGarbageMs = t.garbage ? Math.max(3000, t.garbage - lap * 800) : 0;
+        garbageTimer = 0;
+        renderBoss();
+      }
+
+      // 刷新侧栏的 Boss 信息（名字 + 血条 + 特性 + 已击败数）
+      function renderBoss() {
+        bossBox.innerHTML =
+          "<strong>⚔️ " + bossName + "</strong>" +
+          '<div class="boss-hp"><div class="boss-hp-fill" style="width:' +
+          (bossHP / bossMaxHP) * 100 + '%"></div></div>' +
+          '<p class="boss-desc">' + bossDesc + "｜消行＝伤害</p>" +
+          "<p>本局已击败：" + bossesDefeated + " 只</p>";
+      }
+
+      // Boss 技能：往棋盘底部垫一行灰色垃圾（留一个随机空洞），全体方块上移一行
+      function insertGarbage() {
+        // 顶行已有方块 = 再垫就要顶出屏幕 = 直接判负
+        if (board[0].some(function (cell) { return cell !== 0; })) {
+          gameOver();
+          return;
+        }
+        board.shift(); // 顶行移除
+        const row = new Array(COLS).fill("#7d7d85"); // 垃圾灰色
+        row[Math.floor(Math.random() * COLS)] = 0; // 随机留一个洞
+        board.push(row); // 垫到底部
+        // 垫行后当前方块若与棋盘重叠，先试着把它顶上去一格
+        if (current && collide(current.shape, current.x, current.y)) {
+          if (!tryMove(0, -1)) {
+            gameOver();
+            return;
+          }
+        }
+        playTone(200, 0.1, "sawtooth", 0.1); // "呲"的入侵音
+        draw();
+      }
+
+      /* ============================================================
+         ★ 音效模块（Web Audio：用代码现场合成声音，零音频文件）
+         ------------------------------------------------------------
+         原理：AudioContext 是浏览器自带的"电子合成器"，
+         createOscillator 造一个振荡器（发声单元），设好频率让它响一下。
+         浏览器规定：必须先有用户点击/按键才能出声（防止网页一打开就乱响），
+         所以用 ensureAudio() 在第一次交互时才创建。
+         ============================================================ */
+      let audioCtx = null; // 惰性创建的音频上下文（用到才造，省资源）
+      let soundOn = localStorage.getItem("tetris-sound") !== "off"; // 记住开关状态
+
+      // 确保音频可用（在按钮点击 / 按键时调用）
+      function ensureAudio() {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+      }
+
+      // 播放单个音：freq 频率(Hz)，dur 时长(秒)，type 波形，vol 音量，delay 延迟(秒)
+      function playTone(freq, dur, type, vol, delay) {
+        if (!soundOn || !audioCtx) return; // 关了音效或还没初始化就不响
+        const t = audioCtx.currentTime + (delay || 0); // 从"现在(+延迟)"开始响
+        const osc = audioCtx.createOscillator(); // 振荡器 = 发声单元
+        const gain = audioCtx.createGain(); // 音量旋钮
+        osc.type = type; // square=复古电子游戏感 / triangle=低沉 / sawtooth=刺耳
+        osc.frequency.value = freq; // 频率越高音越尖
+        // 音量从 vol 快速衰减到接近 0：突然停会"啪"一声，渐隐才自然
+        gain.gain.setValueAtTime(vol, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.connect(gain); // 振荡器 → 音量旋钮
+        gain.connect(audioCtx.destination); // 音量旋钮 → 扬声器
+        osc.start(t);
+        osc.stop(t + dur); // 响完自动停
+      }
+
+      // ---- 各事件的音效（多个 playTone 靠 delay 参数排出先后顺序，像弹音阶） ----
+      function sfxRotate() {
+        playTone(660, 0.06, "square", 0.04); // 清脆的"哔"
+      }
+      function sfxLock() {
+        playTone(140, 0.08, "triangle", 0.18); // 低沉的"咚"
+      }
+      function sfxHardDrop() {
+        playTone(880, 0.03, "square", 0.05); // "嗖"
+        playTone(440, 0.06, "triangle", 0.15, 0.03); // 紧跟的"咚"
+      }
+      function sfxClear(n) {
+        // 消几行就弹几个音，一个比一个高（哆→唻→咪→发）
+        const notes = [660, 880, 1100, 1320];
+        for (let i = 0; i < n; i++) {
+          playTone(notes[i], 0.12, "square", 0.09, i * 0.08);
+        }
+        if (n === 4) {
+          // Tetris 四连消：附加一段上扬的小尾音，奖励感拉满
+          playTone(1320, 0.25, "square", 0.09, 0.35);
+          playTone(1760, 0.3, "square", 0.08, 0.45);
+        }
+      }
+      function sfxGameOver() {
+        const notes = [392, 330, 262, 196]; // 一路下行 = 凉了
+        notes.forEach(function (f, i) {
+          playTone(f, 0.22, "sawtooth", 0.08, i * 0.16);
+        });
+      }
+      function sfxNewRecord() {
+        const notes = [523, 659, 784, 1046]; // 一路上行 = 撒花
+        notes.forEach(function (f, i) {
+          playTone(f, 0.15, "square", 0.09, i * 0.1);
+        });
+      }
+
+      // 音效开关按钮：点击切换，状态存 localStorage（下次打开还记得）
+      function renderSoundBtn() {
+        soundBtn.textContent = soundOn ? "🔊 音效开" : "🔇 音效关";
+      }
+      soundBtn.addEventListener("click", function () {
+        soundOn = !soundOn;
+        localStorage.setItem("tetris-sound", soundOn ? "on" : "off");
+        renderSoundBtn();
+        if (soundOn) {
+          ensureAudio(); // 刚打开时顺便初始化，并"叮"一声确认没坏
+          playTone(880, 0.08, "square", 0.06);
+        }
+      });
+      renderSoundBtn();
+
+      // 造一个空面板：ROWS 行，每行 COLS 个 0
+      function createBoard() {
+        const arr = [];
+        for (let r = 0; r < ROWS; r++) {
+          arr.push(new Array(COLS).fill(0));
+        }
+        return arr;
+      }
+
+      // 7 袋随机法（官方出块规则）：7 种形状洗牌装袋，抽完再装，
+      // 保证每 7 个方块里每种形状必定各出现一次
+      let bag = [];
+      function randomKey() {
+        if (bag.length === 0) {
+          bag = SHAPE_KEYS.slice();
+          // Fisher-Yates 洗牌算法
+          for (let i = bag.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const temp = bag[i];
+            bag[i] = bag[j];
+            bag[j] = temp;
+          }
+        }
+        return bag.pop();
+      }
+
+      // 根据名字生成一个方块对象
+      function createPiece(key) {
+        // .map + .slice 是"深拷贝"，防止旋转改掉 SHAPES 里的原始形状
+        const shape = SHAPES[key].map(function (row) {
+          return row.slice();
+        });
+        return {
+          key: key,
+          shape: shape,
+          x: Math.floor((COLS - shape[0].length) / 2), // 水平居中
+          y: 0, // 从最顶上开始往下掉
+        };
+      }
+
+      // 碰撞检测：撞墙 / 撞到已落定的方块返回 true
+      function collide(shape, offsetX, offsetY) {
+        for (let r = 0; r < shape.length; r++) {
+          for (let c = 0; c < shape[r].length; c++) {
+            if (!shape[r][c]) continue;
+            const x = offsetX + c;
+            const y = offsetY + r;
+            if (x < 0 || x >= COLS || y >= ROWS) return true;
+            if (y < 0) continue;
+            if (board[y][x]) return true;
+          }
+        }
+        return false;
+      }
+
+      // 把矩阵顺时针旋转 90°
+      function rotateMatrix(matrix) {
+        const rows = matrix.length;
+        const cols = matrix[0].length;
+        const result = [];
+        for (let c = 0; c < cols; c++) {
+          const newRow = [];
+          for (let r = rows - 1; r >= 0; r--) {
+            newRow.push(matrix[r][c]);
+          }
+          result.push(newRow);
+        }
+        return result;
+      }
+
+      /* ============================================================
+         4. 游戏规则：落地、消行、计分、出方块
+         ============================================================ */
+
+      function tryMove(dx, dy) {
+        if (!collide(current.shape, current.x + dx, current.y + dy)) {
+          current.x += dx;
+          current.y += dy;
+          return true;
+        }
+        return false;
+      }
+
+      function drop() {
+        if (!running) return;
+        if (!tryMove(0, 1)) {
+          lockPiece();
+        }
+        dropCounter = 0;
+      }
+
+      // 旋转 + "踢墙"：原地转不行就左右挪 1~2 格再试
+      function rotate() {
+        const rotated = rotateMatrix(current.shape);
+        const kicks = [0, -1, 1, -2, 2];
+        for (let i = 0; i < kicks.length; i++) {
+          const kick = kicks[i];
+          if (!collide(rotated, current.x + kick, current.y)) {
+            current.shape = rotated;
+            current.x += kick;
+            sfxRotate(); // ★ 转成功才响一声
+            return;
+          }
+        }
+      }
+
+      // 把当前方块"焊死"到面板上
+      function merge() {
+        current.shape.forEach(function (row, r) {
+          row.forEach(function (val, c) {
+            if (!val) return;
+            const y = current.y + r;
+            const x = current.x + c;
+            if (y >= 0) board[y][x] = COLORS[current.key];
+          });
+        });
+      }
+
+      // 消除填满的行，返回消掉了几行
+      function clearLines() {
+        let cleared = 0;
+        for (let r = ROWS - 1; r >= 0; r--) {
+          const isFull = board[r].every(function (cell) {
+            return cell !== 0;
+          });
+          if (isFull) {
+            board.splice(r, 1);
+            board.unshift(new Array(COLS).fill(0));
+            cleared++;
+            r++;
+          }
+        }
+        return cleared;
+      }
+
+      // 计分表：一次消 1/2/3/4 行分别 100/300/500/800 分
+      const LINE_SCORES = [0, 100, 300, 500, 800];
+
+      function addScore(cleared) {
+        score += LINE_SCORES[cleared] * level;
+        lines += cleared;
+        level = Math.floor(lines / 10) + 1; // 每消 10 行升一级
+        dropInterval = Math.max(100, 600 - (level - 1) * 60); // 越高级越快
+        refreshNumbers();
+        checkRewards();
+      }
+
+      function refreshNumbers() {
+        scoreEl.textContent = score;
+        levelEl.textContent = level;
+        linesEl.textContent = lines;
+      }
+
+      function lockPiece() {
+        merge();
+        // ★ 先找出满了的行；有就进入闪光动画（300ms 后才真正消失），没有就直接出下一块
+        const full = [];
+        for (let r = 0; r < ROWS; r++) {
+          const isFull = board[r].every(function (cell) {
+            return cell !== 0;
+          });
+          if (isFull) full.push(r);
+        }
+        if (full.length > 0) {
+          clearingRows = full; // 记下要闪光的行
+          clearTimer = 0; // 动画从 0 开始计时
+          current = null; // 方块已焊死，"下落中"的那个不用再画了
+          sfxClear(full.length); // ★ 消行音效
+        } else {
+          sfxLock(); // ★ 普通落地一声闷"咚"
+          spawnPiece();
+        }
+      }
+
+      // ★ 闪光动画播完后才真正执行消行 + 计分（由主循环调用）
+      function finishClear() {
+        const cleared = clearLines(); // 行还满着的就是刚才闪光的行，复用原消行函数
+        const pts = LINE_SCORES[cleared] * level; // 先按当前等级算好这波的分
+        addScore(cleared);
+        clearingRows = [];
+        // ★ 闯关模式：消几行就对 Boss 造成几点伤害
+        if (mode === "boss" && cleared > 0) {
+          bossHP -= cleared;
+          if (bossHP <= 0) {
+            // 血条清空 = 击败！立即换下一只（棋盘保留，继续车轮战）
+            bossesDefeated++;
+            popup = { text: "击败 " + bossName + "！", timer: 0 };
+            sfxNewRecord(); // 击败 Boss 的撒花音
+            bossNum++;
+            makeBoss(bossNum);
+          } else {
+            popup = { text: CLEAR_NAMES[cleared] + " -" + cleared + " HP", timer: 0 };
+            renderBoss(); // 刷新血条
+          }
+        } else {
+          popup = { text: CLEAR_NAMES[cleared] + " +" + pts, timer: 0 }; // ★ 漂浮文字
+        }
+        spawnPiece();
+      }
+
+      function spawnPiece() {
+        current = createPiece(nextKey);
+        nextKey = randomKey();
+        drawNext();
+        // 新方块一出现就碰撞 = 堆到顶了 = 游戏结束
+        if (collide(current.shape, current.x, current.y)) {
+          gameOver();
+        }
+      }
+
+      // 空格：直接落到底，每格 2 分
+      function hardDrop() {
+        sfxHardDrop(); // ★ "嗖——咚"
+        while (tryMove(0, 1)) {
+          score += 2;
+        }
+        lockPiece();
+        refreshNumbers();
+        checkRewards();
+      }
+
+      /* ============================================================
+         5. 奖励逻辑
+         ============================================================ */
+
+      function checkRewards() {
+        REWARDS.forEach(function (reward, index) {
+          if (score >= reward.score && unlockedRewards.indexOf(index) === -1) {
+            unlockedRewards.push(index);
+            renderRewards();
+          }
+        });
+      }
+
+      function renderRewards() {
+        let html = "<strong>🎁 分数奖励</strong>";
+        REWARDS.forEach(function (reward, index) {
+          const unlocked = unlockedRewards.indexOf(index) !== -1;
+          let inner;
+          if (unlocked) {
+            if (reward.url) {
+              inner =
+                '<a href="' +
+                reward.url +
+                '" target="_blank" rel="noopener">点我去领奖励 →</a>';
+            } else {
+              inner =
+                "<span>（链接还没填：去 tetris.html 里搜 REWARDS，把 url 补上）</span>";
+            }
+          } else {
+            inner = "还差 " + (reward.score - score) + " 分";
+          }
+          html +=
+            '<div class="reward-card' +
+            (unlocked ? " unlocked" : "") +
+            '">' +
+            reward.title +
+            "（" +
+            reward.score +
+            " 分）<br>" +
+            inner +
+            "</div>";
+        });
+        rewardBox.innerHTML = html;
+      }
+
+      /* ============================================================
+         5.5 分数记录模块（localStorage：关掉浏览器再打开也不丢）
+         ============================================================ */
+
+      function saveRecords() {
+        localStorage.setItem("tetris-high-score", highScore);
+        localStorage.setItem(
+          "tetris-recent-scores",
+          JSON.stringify(recentScores),
+        );
+      }
+
+      function loadRecords() {
+        highScore =
+          parseInt(localStorage.getItem("tetris-high-score"), 10) || 0;
+        // ★ 闯关模式的最高击败数
+        bossBest =
+          parseInt(localStorage.getItem("tetris-boss-best"), 10) || 0;
+        const rawRecent = localStorage.getItem("tetris-recent-scores");
+        try {
+          const parsed = JSON.parse(rawRecent);
+          recentScores = Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          recentScores = [];
+        }
+        renderRecords();
+      }
+
+      function recordScore() {
+        if (score <= 0) return; // 0 分的局不记录
+        recentScores.unshift(score); // 新战绩插到最前面
+        recentScores = recentScores.slice(0, 3); // 只留最近 3 局
+        if (score > highScore) {
+          highScore = score;
+          newRecord = true;
+        }
+        saveRecords();
+        renderRecords();
+      }
+
+      function renderRecords() {
+        let html = "<strong>📊 分数记录</strong>";
+        html += "<p>🏆 最高分：" + highScore + "</p>";
+        // ★ 闯关模式纪录：历史最高击败 Boss 数
+        html += "<p>⚔️ 闯关最高击败：" + bossBest + " 只</p>";
+        if (recentScores.length === 0) {
+          html += '<p style="color:#999">最近战绩：还没有，快打一局吧~</p>';
+        } else {
+          html += "<p>最近战绩：</p>";
+          recentScores.forEach(function (s, i) {
+            html += "<p>" + (i + 1) + ". " + s + " 分</p>";
+          });
+        }
+        recordsBox.innerHTML = html;
+      }
+
+      /* ============================================================
+         6. 画面绘制
+         ============================================================ */
+
+      /* ---------- ★ 方块美化：预渲染"积木质感"贴图 ----------
+         立体感三件套：上亮下暗的渐变 + 顶部高光条 + 深色描边。
+         每种颜色每种尺寸只画一次，存进 tileCache 缓存，
+         以后每帧直接 drawImage"贴图"——比每帧现算渐变快得多。 */
+
+      // 工具：把两个 hex 颜色按比例混合（ratio=0 返回 c1，=1 返回 c2）
+      function mixColor(hex1, hex2, ratio) {
+        const h1 = parseInt(hex1.slice(1), 16); // "#rrggbb" → 数字
+        const h2 = parseInt(hex2.slice(1), 16);
+        const r = Math.round(
+          ((h1 >> 16) & 255) + ((((h2 >> 16) & 255) - ((h1 >> 16) & 255)) * ratio),
+        );
+        const g = Math.round(
+          ((h1 >> 8) & 255) + ((((h2 >> 8) & 255) - ((h1 >> 8) & 255)) * ratio),
+        );
+        const b = Math.round((h1 & 255) + (((h2 & 255) - (h1 & 255)) * ratio));
+        return "rgb(" + r + "," + g + "," + b + ")";
+      }
+
+      const tileCache = {}; // 缓存表：{ "颜色_尺寸": 画好的贴图 }
+
+      // 取（或第一次现场制作）某颜色某尺寸的方块贴图
+      function getTile(color, size) {
+        const key = color + "_" + size;
+        if (tileCache[key]) return tileCache[key]; // 画过就直接用缓存
+
+        const tile = document.createElement("canvas"); // 一块 size×size 的离屏小画布
+        tile.width = size;
+        tile.height = size;
+        const g = tile.getContext("2d");
+
+        // 1. 立体渐变：顶部混白 45%（受光面）→ 中间原色 → 底部混黑 35%（背光面）
+        const grad = g.createLinearGradient(0, 0, 0, size);
+        grad.addColorStop(0, mixColor(color, "#ffffff", 0.45));
+        grad.addColorStop(0.5, color);
+        grad.addColorStop(1, mixColor(color, "#000000", 0.35));
+        g.fillStyle = grad;
+        g.fillRect(0, 0, size, size);
+
+        // 2. 顶部高光条：一条半透明白，模拟"光从上方打下来"的玻璃感
+        g.fillStyle = "rgba(255,255,255,0.3)";
+        g.fillRect(1, 1, size - 2, Math.max(2, Math.round(size * 0.16)));
+
+        // 3. 描边：半透明黑框，格子之间才有分界
+        g.strokeStyle = "rgba(0,0,0,0.5)";
+        g.lineWidth = 1;
+        g.strokeRect(0.5, 0.5, size - 1, size - 1);
+
+        tileCache[key] = tile;
+        return tile;
+      }
+
+      // 画一个小格子：直接贴预渲染好的贴图（棋盘和预览窗自动一起变漂亮）
+      function drawBlock(context, x, y, color, size) {
+        const s = size || BLOCK;
+        context.drawImage(getTile(color, s), x * s, y * s);
+      }
+
+      // 性能优化：网格线预画到一张离屏画布上，每帧只"贴图"
+      const gridLayer = document.createElement("canvas");
+      gridLayer.width = canvas.width;
+      gridLayer.height = canvas.height;
+
+      function buildGridLayer() {
+        const g = gridLayer.getContext("2d");
+        g.strokeStyle = "rgba(255,255,255,0.08)";
+        g.lineWidth = 1;
+        g.beginPath();
+        for (let c = 1; c < COLS; c++) {
+          g.moveTo(c * BLOCK, 0);
+          g.lineTo(c * BLOCK, gridLayer.height);
+        }
+        for (let r = 1; r < ROWS; r++) {
+          g.moveTo(0, r * BLOCK);
+          g.lineTo(gridLayer.width, r * BLOCK);
+        }
+        g.stroke();
+      }
+      buildGridLayer();
+
+      // 绘制主画面
+      function draw() {
+        // 1. 清空上一帧
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // 2. 贴上预画的网格
+        ctx.drawImage(gridLayer, 0, 0);
+        // 3. 画已落定的方块
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (board[r][c]) drawBlock(ctx, c, r, board[r][c]);
+          }
+        }
+        // 4. 画正在下落的方块
+        if (current) {
+          current.shape.forEach(function (row, r) {
+            row.forEach(function (val, c) {
+              if (val) {
+                drawBlock(
+                  ctx,
+                  current.x + c,
+                  current.y + r,
+                  COLORS[current.key],
+                );
+              }
+            });
+          });
+        }
+        // ★ 消行动画：给正在消失的行盖一层白色闪光，随时间淡出
+        if (clearingRows.length > 0) {
+          const p = clearTimer / CLEAR_DURATION; // 0→1 播放进度
+          ctx.fillStyle = "rgba(255,255,255," + 0.95 * (1 - p) + ")";
+          clearingRows.forEach(function (r) {
+            ctx.fillRect(0, r * BLOCK, canvas.width, BLOCK);
+          });
+        }
+
+        // ★ 漂浮文字："DOUBLE! +300" 在画面中央往上飘并淡出
+        if (popup) {
+          const p = popup.timer / POPUP_DURATION; // 0→1
+          ctx.font = "bold 22px 'Microsoft YaHei'";
+          ctx.textAlign = "center";
+          ctx.globalAlpha = 1 - p; // 整体透明度随时间降低
+          ctx.fillStyle = "#ffe600";
+          ctx.shadowColor = "#000000"; // 黑色投影，亮背景上也看得清
+          ctx.shadowBlur = 6;
+          ctx.fillText(popup.text, canvas.width / 2, canvas.height * 0.35 - p * 30); // 往上飘 30px
+          ctx.shadowBlur = 0; // 用完立刻关掉投影，别影响后面的字
+          ctx.globalAlpha = 1;
+        }
+
+        // 5. 未开始/暂停/结束时盖遮罩写字
+        if (!running || paused) {
+          ctx.fillStyle = "rgba(0,0,0,0.7)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "center";
+          ctx.font = "bold 30px 'Microsoft YaHei'"; // ★ 大画布配大字
+          const text = paused
+            ? "已暂停（按 P 或「继续」按钮）"
+            : isGameOver
+              ? "游戏结束"
+              : "选择模式开始";
+          ctx.fillText(text, canvas.width / 2, canvas.height / 2 - 15);
+          if (isGameOver) {
+            ctx.font = "20px 'Microsoft YaHei'";
+            ctx.fillText(
+              "最终得分：" + score,
+              canvas.width / 2,
+              canvas.height / 2 + 30,
+            );
+            // ★ 闯关模式结束时额外显示击败数
+            if (mode === "boss") {
+              ctx.fillText(
+                "击败 Boss：" + bossesDefeated + " 只",
+                canvas.width / 2,
+                canvas.height / 2 + 60,
+              );
+            }
+            if (newRecord) {
+              ctx.fillStyle = "#ffe600";
+              ctx.fillText(
+                "🎉 新纪录！",
+                canvas.width / 2,
+                canvas.height / 2 + 92,
+              );
+            }
+          }
+        }
+      }
+
+      // 绘制"下一个方块"预览（★ 预览格子从 24 加大到 32）
+      function drawNext() {
+        nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+        if (!nextKey) return;
+        const shape = SHAPES[nextKey];
+        const size = 28; // 预览格子比棋盘的 24 略大一点，方便看清"下一个"
+        const w = shape[0].length * size;
+        const h = shape.length * size;
+        const offsetX = (nextCanvas.width - w) / 2;
+        const offsetY = (nextCanvas.height - h) / 2;
+        nextCtx.save();
+        nextCtx.translate(offsetX, offsetY);
+        shape.forEach(function (row, r) {
+          row.forEach(function (val, c) {
+            if (val) drawBlock(nextCtx, c, r, COLORS[nextKey], size);
+          });
+        });
+        nextCtx.restore();
+      }
+
+      /* ============================================================
+         7. 游戏流程控制：开始 / 暂停 / 结束 + 主循环
+         ============================================================ */
+
+      function update(time) {
+        // 暂停或结束时直接退出，循环彻底停住，不空占 CPU
+        if (!running || paused) return;
+
+        // 距上一帧的毫秒数；封顶 1000ms 防止切标签页后"瞬移"
+        const deltaTime = Math.min(time - lastTime, 1000);
+        lastTime = time;
+
+        // ★ 消行动画期间：只推进动画，重力/连发全部暂停，画一帧就走
+        if (clearingRows.length > 0) {
+          clearTimer += deltaTime;
+          if (popup) popup.timer += deltaTime;
+          if (clearTimer >= CLEAR_DURATION) finishClear(); // 动画播完 → 真正消行
+          draw();
+          if (!running) return; // finishClear 里可能触发游戏结束
+          animationId = requestAnimationFrame(update);
+          return;
+        }
+
+        // ★ 漂浮文字计时（正常游戏时也要继续往上飘）
+        if (popup) {
+          popup.timer += deltaTime;
+          if (popup.timer >= POPUP_DURATION) popup = null;
+        }
+
+        // ★ 闯关模式：会垫行的 Boss（地刺/混沌）按间隔发动技能
+        if (mode === "boss" && bossGarbageMs > 0) {
+          garbageTimer += deltaTime;
+          if (garbageTimer >= bossGarbageMs) {
+            garbageTimer = 0;
+            insertGarbage();
+            if (!running) return; // 垫行可能直接把玩家顶死
+          }
+        }
+
+        // ① 重力：while 补齐"欠下"的下落次数，节奏更准
+        // ★ 闯关模式要除以 Boss 的速度倍率：倍率越大，实际下落越快
+        const interval = mode === "boss" ? dropInterval / bossSpeed : dropInterval;
+        dropCounter += deltaTime;
+        while (dropCounter >= interval && running) {
+          drop();
+          dropCounter -= interval;
+        }
+        if (!running) return;
+
+        // ② 方向键连发（DAS/ARR）
+        const dir = heldMoves.left ? -1 : heldMoves.right ? 1 : 0;
+        if (dir !== 0) {
+          dasCounter += deltaTime;
+          if (dasCounter >= DAS_DELAY) {
+            arrCounter += deltaTime;
+            while (arrCounter >= ARR_SPEED) {
+              tryMove(dir, 0);
+              arrCounter -= ARR_SPEED;
+            }
+          }
+        } else {
+          dasCounter = 0;
+          arrCounter = 0;
+        }
+
+        // ③ 按住 ↓ 软降
+        if (heldMoves.down) {
+          softCounter += deltaTime;
+          while (softCounter >= SOFT_SPEED && running) {
+            drop();
+            softCounter -= SOFT_SPEED;
+          }
+        } else {
+          softCounter = 0;
+        }
+
+        draw();
+        if (!running) return;
+        animationId = requestAnimationFrame(update);
+      }
+
+      // 开始 / 重新开始（newMode："score" 计分模式 / "boss" 闯关模式）
+      function startGame(newMode) {
+        ensureAudio(); // ★ 点"开始"属于用户手势，正好初始化音频
+        mode = newMode || "score"; // ★ 记录本局模式
+        // 上一局没打完就重开：先存档那一局
+        if (running && !isGameOver) recordScore();
+        newRecord = false;
+        clearingRows = []; // ★ 消行动画 / 漂浮文字状态复位
+        popup = null;
+        pauseBtn.textContent = "暂停";
+        heldMoves.left = false;
+        heldMoves.right = false;
+        heldMoves.down = false;
+        board = createBoard();
+        score = 0;
+        lines = 0;
+        level = 1;
+        dropInterval = 600;
+        dropCounter = 0;
+        paused = false;
+        isGameOver = false;
+        refreshNumbers();
+        // ★ 模式初始化：闯关模式显示 Boss 栏并生成第 1 只；计分模式隐藏
+        bossBox.style.display = mode === "boss" ? "block" : "none";
+        if (mode === "boss") {
+          bossesDefeated = 0;
+          bossNum = 1;
+          makeBoss(1);
+        }
+        startBtn.textContent = "重开·计分";
+        bossBtn.textContent = "重开·闯关";
+        nextKey = randomKey();
+        spawnPiece();
+        running = true;
+        renderRewards();
+        lastTime = performance.now();
+        if (animationId) cancelAnimationFrame(animationId);
+        animationId = requestAnimationFrame(update);
+      }
+
+      function togglePause() {
+        paused = !paused;
+        if (!paused) {
+          // 恢复：校准时间 + 连发计时清零 + 重新启动主循环
+          lastTime = performance.now();
+          dasCounter = 0;
+          arrCounter = 0;
+          softCounter = 0;
+          if (animationId) cancelAnimationFrame(animationId);
+          animationId = requestAnimationFrame(update);
+        }
+        pauseBtn.textContent = paused ? "继续" : "暂停";
+        draw();
+      }
+
+      function gameOver() {
+        running = false;
+        isGameOver = true;
+        recordScore(); // 存档这一局（内部可能标记 newRecord）
+        // ★ 闯关模式：刷新"最高击败 Boss 数"纪录
+        if (mode === "boss" && bossesDefeated > bossBest) {
+          bossBest = bossesDefeated;
+          localStorage.setItem("tetris-boss-best", bossBest);
+          newRecord = true;
+        }
+        renderRecords();
+        sfxGameOver(); // ★ 下行音 = 凉了
+        if (newRecord) sfxNewRecord(); // ★ 破纪录再来一段上行的撒花音
+        pauseBtn.textContent = "暂停";
+        draw();
+      }
+
+      // ★ 两个模式按钮各自启动对应模式（不带参数调用会报错，必须传模式）
+      startBtn.addEventListener("click", function () {
+        startGame("score");
+      });
+      bossBtn.addEventListener("click", function () {
+        startGame("boss");
+      });
+
+      pauseBtn.addEventListener("click", function () {
+        if (!running || isGameOver) return;
+        togglePause();
+      });
+
+      /* ---------- 键盘控制 ---------- */
+      document.addEventListener("keydown", function (e) {
+        const tag = e.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        // 忽略系统自带的按住重复事件，连发由自己的 DAS 计时负责
+        if (e.repeat) return;
+
+        // ★ 第一次按键时初始化音频（浏览器规定：必须先有用户交互才能出声）
+        ensureAudio();
+
+        // ★ 消行动画的 300ms 里不响应操作（方块还没出），只允许暂停
+        if (clearingRows.length > 0) {
+          if (running && (e.key === "p" || e.key === "P")) {
+            togglePause();
+            e.preventDefault();
+          }
+          return;
+        }
+
+        if (!running || paused) {
+          if (running && (e.key === "p" || e.key === "P")) {
+            togglePause();
+            e.preventDefault();
+          }
+          return;
+        }
+
+        switch (e.key) {
+          case "ArrowLeft":
+            tryMove(-1, 0);
+            heldMoves.left = true;
+            dasCounter = 0;
+            arrCounter = 0;
+            break;
+          case "ArrowRight":
+            tryMove(1, 0);
+            heldMoves.right = true;
+            dasCounter = 0;
+            arrCounter = 0;
+            break;
+          case "ArrowDown":
+            drop();
+            heldMoves.down = true;
+            softCounter = 0;
+            break;
+          case "ArrowUp":
+            rotate();
+            break;
+          case " ":
+            hardDrop();
+            break;
+          case "p":
+          case "P":
+            togglePause();
+            break;
+          default:
+            return;
+        }
+
+        draw();
+        e.preventDefault();
+      });
+
+      // 松开按键清除"按住"标记
+      document.addEventListener("keyup", function (e) {
+        if (e.key === "ArrowLeft") heldMoves.left = false;
+        if (e.key === "ArrowRight") heldMoves.right = false;
+        if (e.key === "ArrowDown") heldMoves.down = false;
+      });
+
+      // 切走标签页/窗口：松开按键 + 自动暂停
+      window.addEventListener("blur", function () {
+        heldMoves.left = false;
+        heldMoves.right = false;
+        heldMoves.down = false;
+        if (running && !paused && !isGameOver) togglePause();
+      });
+
+      /* ---------- 初始化 ---------- */
+      board = createBoard();
+      renderRewards();
+      loadRecords();
+      draw();
+    </script>
+  </body>
+</html>

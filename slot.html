@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 网页小图标：🎰 emoji 直接生成，避免 404 -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>"
+    />
+    <style>
+      /* ==================== 页面整体 ==================== */
+      body {
+        margin: 0;
+        min-height: 100vh;
+        text-align: center;
+        font-family: "Microsoft YaHei";
+        color: #fff;
+        /* 深红→黑的赌场风格渐变背景 */
+        background: linear-gradient(160deg, #3d0000 0%, #1a0000 60%, #000 100%);
+      }
+      h1 {
+        margin: 25px 0 5px;
+        font-size: 42px;
+        color: #ffd700; /* 金色标题 */
+        text-shadow: 0 0 18px rgba(255, 215, 0, 0.5); /* 金色发光 */
+      }
+      /* 返回主页的小链接 */
+      .back-link {
+        display: inline-block;
+        margin-bottom: 15px;
+        color: #ffd700;
+        font-size: 15px;
+        text-decoration: none;
+        border-bottom: 1px dashed #ffd700;
+      }
+      .back-link:hover {
+        color: #fff;
+      }
+
+      /* ==================== 通用卡片样式 ====================
+         设置面板 / 游戏面板 / 结算面板 都套这一层"卡片"外观 */
+      .panel {
+        width: 90%;
+        max-width: 640px;
+        margin: 0 auto 30px;
+        padding: 20px;
+        box-sizing: border-box; /* padding 算进宽度里，防止撑破 */
+        background: rgba(0, 0, 0, 0.45); /* 半透明黑卡片 */
+        border: 2px solid #ffd700;
+        border-radius: 14px;
+      }
+      .panel h2 {
+        margin-top: 0;
+        color: #ffd700;
+      }
+
+      /* ==================== 设置面板 ==================== */
+      .setting-row {
+        margin: 18px 0;
+        font-size: 17px;
+      }
+      /* 金额/时长输入框 */
+      .setting-row input {
+        width: 160px;
+        padding: 8px 10px;
+        font-size: 16px;
+        border: 2px solid #ffd700;
+        border-radius: 8px;
+        background: #1a0000;
+        color: #ffd700;
+        text-align: center;
+      }
+      .setting-row small {
+        display: block;
+        margin-top: 5px;
+        color: #bbb;
+        font-size: 12px;
+      }
+      /* 通用金色大按钮 */
+      .gold-btn {
+        background: linear-gradient(#ffe259, #ffa751); /* 金色渐变 */
+        color: #4d1d00;
+        font-size: 19px;
+        font-weight: bold;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 40px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      .gold-btn:hover {
+        transform: scale(1.05); /* 悬停放大一点 */
+      }
+      .gold-btn:disabled {
+        opacity: 0.4; /* 半透明 = 看起来"按不动" */
+        cursor: not-allowed;
+        transform: none;
+      }
+      #setup-tip {
+        color: #bbb;
+        font-size: 13px;
+        line-height: 1.8;
+      }
+
+      /* ==================== 游戏面板 ==================== */
+      /* 状态栏：余额 / 倒计时 / 盈亏 三格并排 */
+      #status-bar {
+        display: flex; /* 弹性布局：三个小卡片一行排开 */
+        justify-content: center; /* 水平居中 */
+        gap: 12px; /* 之间的空隙 */
+        flex-wrap: wrap; /* 屏幕太窄就自动换行 */
+        margin-bottom: 15px;
+      }
+      .stat-card {
+        background: rgba(255, 215, 0, 0.12);
+        border: 1px solid #ffd700;
+        border-radius: 10px;
+        padding: 8px 18px;
+        min-width: 120px;
+      }
+      .stat-card .label {
+        font-size: 13px;
+        color: #ffd700;
+      }
+      .stat-card .value {
+        font-size: 26px;
+        font-weight: bold;
+        margin-top: 2px;
+      }
+      /* 盈亏颜色：正数绿、负数红 */
+      #stat-profit.up {
+        color: #6cff6c;
+      }
+      #stat-profit.down {
+        color: #ff6b6b;
+      }
+
+      /* ==================== 老虎机主体 ==================== */
+      #machine {
+        display: flex; /* 三个转轮横向排开 */
+        justify-content: center;
+        gap: 10px;
+        padding: 18px;
+        background: linear-gradient(#8b0000, #5a0000); /* 机身深红 */
+        border: 4px solid #ffd700;
+        border-radius: 18px;
+        box-shadow: 0 0 25px rgba(255, 0, 60, 0.35); /* 红色灯光氛围 */
+      }
+      /* 单个转轮窗口 */
+      .reel {
+        width: 150px;
+        height: 190px;
+        background: #fff;
+        border: 3px solid #333;
+        border-radius: 12px;
+        font-size: 90px; /* emoji 符号要大！ */
+        line-height: 190px; /* 行高等于高度 = 垂直居中 */
+        overflow: hidden;
+        transition: box-shadow 0.2s; /* 发光效果平滑出现 */
+      }
+      /* 中奖时转轮发绿光 + 上下弹跳动画 */
+      .reel.win {
+        box-shadow: 0 0 22px #00ff88;
+        border-color: #00ff88;
+        animation: win-bounce 0.45s ease 3; /* 弹 3 次 */
+      }
+      /* 三个转轮依次延迟弹跳（像波浪一样从左到右） */
+      .reel:nth-child(2).win {
+        animation-delay: 0.12s;
+      }
+      .reel:nth-child(3).win {
+        animation-delay: 0.24s;
+      }
+      /* 弹跳关键帧：跳起来 → 落下时压扁一点 → 回弹 */
+      @keyframes win-bounce {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+        40% {
+          transform: translateY(-16px) scale(1.08);
+        }
+        70% {
+          transform: translateY(0) scale(0.94);
+        }
+      }
+
+      /* 拉杆时机身左右摇晃（像真的机器被拽了一下） */
+      #machine.shake {
+        animation: machine-shake 0.5s ease;
+      }
+      @keyframes machine-shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-7px);
+        }
+        40% {
+          transform: translateX(6px);
+        }
+        60% {
+          transform: translateX(-4px);
+        }
+        80% {
+          transform: translateX(3px);
+        }
+      }
+      /* 滚动时转轮微微变暗 + 虚线边框 */
+      .reel.spinning {
+        border-style: dashed;
+        filter: brightness(0.9);
+      }
+
+      /* 下注按钮一排 */
+      #bet-row {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin: 15px 0 5px;
+      }
+      .bet-btn {
+        background: rgba(255, 215, 0, 0.15);
+        color: #ffd700;
+        border: 2px solid #ffd700;
+        border-radius: 8px;
+        padding: 8px 22px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      /* 当前选中的下注档：实心金 */
+      .bet-btn.active {
+        background: #ffd700;
+        color: #4d1d00;
+        font-weight: bold;
+      }
+      .bet-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      /* 消息区（中奖提示等） */
+      #message {
+        min-height: 30px; /* 固定高度防止文字出现时页面跳动 */
+        font-size: 19px;
+        font-weight: bold;
+        color: #ffd700;
+        margin: 8px 0;
+      }
+      #message.win {
+        color: #6cff6c; /* 中奖消息绿色 */
+        animation: msg-pop 0.4s ease; /* 消息弹出动画 */
+      }
+      /* 消息弹跳关键帧：从小弹到大再回正常 */
+      @keyframes msg-pop {
+        0% {
+          transform: scale(0.5);
+        }
+        60% {
+          transform: scale(1.25);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      #message.lose {
+        color: #ff6b6b; /* 未中奖红色 */
+      }
+
+      /* 闲置警告条：默认隐藏，闲置被扣钱时闪现 */
+      #idle-warning {
+        margin-top: 10px;
+        padding: 8px;
+        font-size: 14px;
+        color: #ffb3b3;
+        background: rgba(255, 0, 0, 0.25);
+        border: 1px dashed #ff6b6b;
+        border-radius: 8px;
+        animation: blink 1s infinite; /* 一闪一闪提醒你 */
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0.35; /* 动画进行到一半时变半透明 */
+        }
+      }
+
+      /* ==================== 结算面板 ==================== */
+      #result-box p {
+        font-size: 17px;
+        line-height: 2;
+        margin: 6px 0;
+      }
+      #final-amount {
+        font-size: 40px;
+        font-weight: bold;
+        color: #ffd700;
+      }
+    </style>
+    <title>幸运老虎机</title>
+  </head>
+  <body>
+    <h1>🎰 幸运老虎机</h1>
+    <a href="index.html" class="back-link">← 返回主页</a>
+
+    <!-- ==================== 第一块：设置面板 ====================
+         游戏开始前在这里填"初始金额"和"游戏时长"，
+         点开始后输入框会被锁死（disabled），本次游戏不可再改 -->
+    <div id="setup-box" class="panel">
+      <h2>游戏设置</h2>
+
+      <div class="setting-row">
+        初始金额：
+        <input type="number" id="money-input" value="1000" min="100" max="1000000" step="100" />
+        <small>范围 100 ~ 1000000，开始后本次游戏内不可更改</small>
+      </div>
+
+      <div class="setting-row">
+        游戏时长：
+        <input type="number" id="duration-input" value="5" min="1" max="30" step="1" />
+        分钟
+        <small>范围 1 ~ 30 分钟。时长越短，"挂机扣钱"的判定越严格</small>
+      </div>
+
+      <button id="start-btn" class="gold-btn">开始游戏</button>
+
+      <p id="setup-tip">
+        规则：<br />
+        ① 每次拉动拉杆扣掉所选下注，中奖按赔率返还；<br />
+        ② 中奖概率为<b>纯随机</b>：三个转轮各自独立随机（三连同号约 2%，恰好一对约
+        5%），完全拼运气；<br />
+        ③ <b>闲置处罚</b>：长时间不操作会定期罚款，整局完全不玩会被<b>恰好扣光初始金额</b>——
+        挂机永远不会比认真玩结算得多（闲置间隔随你设置的时长自动调整）；<br />
+        ④ 时间到 或 余额不够最低下注时游戏结束。
+      </p>
+    </div>
+
+    <!-- ==================== 第二块：游戏面板（默认隐藏） ==================== -->
+    <div id="game-box" class="panel" hidden>
+      <!-- 状态栏：三张小卡片 -->
+      <div id="status-bar">
+        <div class="stat-card">
+          <div class="label">余额</div>
+          <div class="value" id="stat-balance">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">剩余时间</div>
+          <div class="value" id="stat-time">--:--</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">总盈亏</div>
+          <div class="value" id="stat-profit">0</div>
+        </div>
+      </div>
+
+      <!-- 老虎机机身：三个转轮窗口 -->
+      <div id="machine">
+        <div class="reel" id="reel-0">🍒</div>
+        <div class="reel" id="reel-1">🍋</div>
+        <div class="reel" id="reel-2">🔔</div>
+      </div>
+
+      <!-- 下注档位选择（游戏里随时可换，但余额不够的档会自动禁用） -->
+      <div id="bet-row">
+        <button class="bet-btn" data-bet="10">下注 10</button>
+        <button class="bet-btn active" data-bet="25">下注 25</button>
+        <button class="bet-btn" data-bet="50">下注 50</button>
+      </div>
+
+      <button id="lever-btn" class="gold-btn">拉动拉杆 🎰</button>
+      <p id="message"></p>
+
+      <!-- 闲置警告：被扣钱时显示一小段时间 -->
+      <div id="idle-warning" hidden></div>
+    </div>
+
+    <!-- ==================== 第三块：结算面板（默认隐藏） ==================== -->
+    <div id="result-box" class="panel" hidden>
+      <h2>游戏结束</h2>
+      <p id="result-reason"></p>
+      <p>最终金额</p>
+      <div id="final-amount">0</div>
+      <p id="result-detail"></p>
+      <button id="again-btn" class="gold-btn">再来一局</button>
+    </div>
+
+    <script>
+      /* =====================================================================
+         一、基础数据配置
+         ===================================================================== */
+
+      // 转轮上出现的 7 种符号（用 emoji，不用画图就能很漂亮）
+      const SYMBOLS = ["🍒", "🍋", "🍊", "🔔", "⭐", "💎", "7️⃣"];
+
+      // 赔率表：三个全中时，不同符号返还"下注 × 倍数"
+      // 前两个 KEY 是低价值符号，后面是高价值符号
+      const TRIPLE_PAYOUT = {
+        "🍒": 8,
+        "🍋": 8,
+        "🍊": 8,
+        "🔔": 12,
+        "⭐": 12,
+        "💎": 20,
+        "7️⃣": 50,
+      };
+      const PAIR_PAYOUT = 2; // 恰好两个相同：固定 2 倍
+
+      /* 概率说明（现在是纯随机！）：
+         三个转轮各自独立随机取符号，没有任何人为干预：
+         - 三连同号概率 = 1/7 × 1/7 = 1/49 ≈ 2%
+         - 恰好一对概率 = 3 × (1/7)² × (6/7) ≈ 5.2%
+         - 其余 ≈ 92.8% 不中奖
+         长期回报率约 45%，纯拼运气。 */
+      // （之前人为调高概率的 WIN_TABLE 配置表已删除）
+
+      // 闲置罚款：开始游戏时动态计算（见 startGame 里的 idlePenalty）。
+      // 设计目标：整局全程挂机，罚款总额恰好 = 初始金额（会被扣到 0），
+      // 保证"不玩"的最终结算金额永远不会比"玩"的多（玩家余额至少 ≥ 0，还有中奖机会）。
+
+      /* =====================================================================
+         二、获取页面元素（DOM）
+         ===================================================================== */
+      const setupBox = document.getElementById("setup-box");
+      const gameBox = document.getElementById("game-box");
+      const resultBox = document.getElementById("result-box");
+      const moneyInput = document.getElementById("money-input");
+      const durationInput = document.getElementById("duration-input");
+      const startBtn = document.getElementById("start-btn");
+      const statBalance = document.getElementById("stat-balance");
+      const statTime = document.getElementById("stat-time");
+      const statProfit = document.getElementById("stat-profit");
+      const reels = [
+        document.getElementById("reel-0"),
+        document.getElementById("reel-1"),
+        document.getElementById("reel-2"),
+      ];
+      const betBtns = document.querySelectorAll(".bet-btn");
+      const leverBtn = document.getElementById("lever-btn");
+      const message = document.getElementById("message");
+      const idleWarning = document.getElementById("idle-warning");
+      const resultReason = document.getElementById("result-reason");
+      const finalAmount = document.getElementById("final-amount");
+      const resultDetail = document.getElementById("result-detail");
+      const againBtn = document.getElementById("again-btn");
+
+      /* =====================================================================
+         三、游戏状态变量
+         ===================================================================== */
+      let initMoney = 0; // 初始金额（设置后不再变，闲置扣钱按它算）
+      let balance = 0; // 当前余额
+      let bet = 25; // 当前选择的下注档
+      let durationSec = 0; // 游戏总时长（秒）
+      let endTime = 0; // 游戏结束的时间点（时间戳，毫秒）
+      let spinning = false; // 转轮是否正在滚动（滚动中禁止再拉）
+      let playing = false; // 游戏是否正在进行
+      let spinCount = 0; // 总拉杆次数
+      let winCount = 0; // 中奖次数
+      let idleThreshold = 0; // 闲置判定间隔（毫秒）
+      let idleDeadline = 0; // 下一次"闲置扣钱"的时间点
+      let clockTimer = null; // 倒计时 + 闲置检查的定时器
+      let idleWarningTimer = null; // 警告条自动隐藏的定时器
+      let idlePenalty = 0; // 每次闲置罚款的金额（开局时计算）
+
+      /* =====================================================================
+         三点五、音效模块（Web Audio API，不需要任何音频文件！）
+         原理：用代码生成"振荡器"发出不同频率的声波，合成简单音效。
+         ===================================================================== */
+      let audioCtx = null; // 音频上下文（第一次点击时才创建，浏览器规则）
+
+      // 确保音频可用：第一次用户点击时调用（浏览器禁止页面自动出声）
+      function ensureAudio() {
+        if (!audioCtx) {
+          try {
+            // 两种写法是兼容新旧浏览器的写法
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          } catch (e) {
+            audioCtx = null; // 极老浏览器不支持就静默失败（没声音但不报错）
+          }
+        }
+        // Chrome 等浏览器会把音频"挂起"，需要手动唤醒
+        if (audioCtx && audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+      }
+
+      // 播放一个单音：频率 freq（赫兹），持续时间 dur（秒），波形 type，音量 vol
+      // startTime 是"从现在开始延迟多少秒再响"（用来串成旋律）
+      function playTone(freq, startTime, dur, type, vol) {
+        if (!audioCtx) return;
+        // 1. 创建振荡器（声音的来源）和音量控制器
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        // 2. 设置参数：波形（square 方波/三角波等）、频率
+        osc.type = type;
+        osc.frequency.value = freq;
+        // 3. 音量先大后快速衰减到 0（模拟真实敲击的"咚——"感）
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime + startTime);
+        gain.gain.exponentialRampToValueAtTime(
+          0.001,
+          audioCtx.currentTime + startTime + dur
+        );
+        // 4. 接线：振荡器 → 音量 → 喇叭，然后响 dur 秒后停
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + startTime);
+        osc.stop(audioCtx.currentTime + startTime + dur);
+      }
+
+      // 拉杆音效：一个快速上扬的"嗖——"声
+      function playPullSound() {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "square";
+        // 频率从 200Hz 滑到 900Hz = 声调一路升高
+        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(900, audioCtx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      }
+
+      // 转轮停格音效：短促的"嗒"
+      function playTickSound() {
+        playTone(900, 0, 0.06, "square", 0.1);
+      }
+
+      // 中奖音效：四个音依次升高的欢快琶音（do-mi-so-do）
+      function playWinSound() {
+        playTone(523.25, 0, 0.15, "triangle", 0.25); // C5
+        playTone(659.25, 0.13, 0.15, "triangle", 0.25); // E5
+        playTone(783.99, 0.26, 0.15, "triangle", 0.25); // G5
+        playTone(1046.5, 0.39, 0.3, "triangle", 0.3); // C6（收尾拖长）
+      }
+
+      // 未中奖音效：低沉的"噗"（提示你输了但不吵）
+      function playLoseSound() {
+        playTone(180, 0, 0.18, "sawtooth", 0.08);
+      }
+
+      /* =====================================================================
+         四、开始游戏
+         ===================================================================== */
+      startBtn.addEventListener("click", function () {
+        // 1. 读取并校验输入（不合法就提示后返回）
+        initMoney = Math.floor(Number(moneyInput.value));
+        if (!(initMoney >= 100 && initMoney <= 1000000)) {
+          alert("初始金额请填 100 ~ 1000000 之间的数字！");
+          return;
+        }
+        const minutes = Number(durationInput.value);
+        if (!(minutes >= 1 && minutes <= 30)) {
+          alert("游戏时长请填 1 ~ 30 分钟！");
+          return;
+        }
+
+        // 2. 初始化所有状态
+        balance = initMoney;
+        durationSec = Math.round(minutes * 60);
+        endTime = Date.now() + durationSec * 1000; // "现在 + 总时长" = 结束时刻
+        spinCount = 0;
+        winCount = 0;
+        spinning = false;
+        playing = true;
+
+        /* 3. 闲置间隔根据游戏时长调整：
+           计算公式：总时长 ÷ 20，但夹在 5 ~ 30 秒之间。
+           例：30 分钟(1800s) → 90s 超上限取 30s；
+               10 分钟(600s)  → 正好 30s；
+               2 分钟(120s)   → 6s；
+               1 分钟(60s)    → 3s 超下限取 5s。 */
+        idleThreshold = Math.min(
+          30000,
+          Math.max(5000, (durationSec / 20) * 1000)
+        );
+        idleDeadline = Date.now() + idleThreshold; // 从现在开始倒计时闲置
+
+        /* 3.5 计算每次闲置要罚多少钱（处罚加重的核心！）：
+           预计整个游戏会出现 (总时长 ÷ 闲置间隔) 次罚款，
+           每次罚 初始金额 ÷ 次数 → 全程挂机总共恰好扣光初始金额。
+           这样"完全不玩"的最终结算一定是 0，绝不可能比玩的人多。 */
+        const idleCount = (durationSec * 1000) / idleThreshold;
+        idlePenalty = Math.max(1, Math.round(initMoney / idleCount));
+
+        // 3.6 开始游戏是用户手势，正好用来唤醒音频（浏览器规则：必须点击后才能出声）
+        ensureAudio();
+
+        // 4. 锁死设置输入（本次游戏不可更改）
+        moneyInput.disabled = true;
+        durationInput.disabled = true;
+
+        // 5. 界面切换：隐藏设置/结算面板，显示游戏面板
+        setupBox.hidden = true;
+        resultBox.hidden = true;
+        gameBox.hidden = false;
+
+        // 6. 刷新显示并启动每秒的"时钟"（负责倒计时 + 闲置检查）
+        renderStatus();
+        message.textContent = "祝你好运！点击拉杆开始～";
+        message.className = "";
+        clockTimer = setInterval(clockTick, 500); // 每 0.5 秒检查一次
+      });
+
+      /* =====================================================================
+         五、每 0.5 秒跑一次的"时钟"：更新倒计时 + 检查是否闲置
+         ===================================================================== */
+      function clockTick() {
+        if (!playing) return;
+
+        const now = Date.now();
+
+        // --- 1. 更新倒计时显示 ---
+        const leftSec = Math.max(0, Math.ceil((endTime - now) / 1000));
+        const mm = String(Math.floor(leftSec / 60)).padStart(2, "0");
+        const ss = String(leftSec % 60).padStart(2, "0");
+        statTime.textContent = mm + ":" + ss;
+
+        // --- 2. 时间到：结束游戏（若转轮还在滚，等它滚完，由 settle 收尾） ---
+        if (now >= endTime) {
+          if (!spinning) endGame("⏰ 时间到！");
+          return;
+        }
+
+        // --- 3. 闲置检查：超过了闲置期限还没操作，就罚款 ---
+        if (now >= idleDeadline) {
+          // 最多扣到 0 为止，不能扣成负数
+          const actualPenalty = Math.min(idlePenalty, balance);
+          balance -= actualPenalty;
+          idleDeadline += idleThreshold; // 下一轮闲置期限往后推一个间隔
+          showIdleWarning(
+            "⚠️ 长时间未操作！被罚款 " +
+              actualPenalty +
+              "（每 " +
+              Math.round(idleThreshold / 1000) +
+              " 秒闲置罚一次，全程挂机会被恰好扣光初始金额！）"
+          );
+          renderStatus();
+          if (balance < 10) endGame("💸 余额不足，被闲置罚款掏空了！");
+        }
+      }
+
+      // 显示闲置警告条 3 秒后自动隐藏
+      function showIdleWarning(text) {
+        idleWarning.textContent = text;
+        idleWarning.hidden = false;
+        clearTimeout(idleWarningTimer);
+        idleWarningTimer = setTimeout(function () {
+          idleWarning.hidden = true;
+        }, 3000);
+      }
+
+      /* =====================================================================
+         六、拉杆：扣下注 → 转轮动画 → 结算
+         ===================================================================== */
+      leverBtn.addEventListener("click", pullLever);
+
+      // 空格键也能拉杆（更爽快），记得阻止页面滚动
+      document.addEventListener("keydown", function (e) {
+        if (e.code === "Space" && !gameBox.hidden) {
+          e.preventDefault();
+          pullLever();
+        }
+      });
+
+      function pullLever() {
+        // 转轮滚动中 / 游戏没在玩 / 余额不够 → 不给拉
+        if (spinning || !playing) return;
+        if (balance < bet) {
+          message.textContent = "余额不够这档下注了，换个低档试试～";
+          message.className = "lose";
+          updateBetButtons();
+          return;
+        }
+
+        // 拉杆 = 一次"操作"，重置闲置倒计时
+        noteActivity();
+        ensureAudio(); // 键盘空格拉杆也要能出声（按键同样算用户手势）
+
+        balance -= bet; // 先扣掉下注
+        spinCount++;
+        spinning = true;
+        leverBtn.disabled = true; // 滚动中按钮禁用
+        renderStatus();
+        message.textContent = "转起来咯……";
+        message.className = "";
+
+        // 拉杆音效 + 机身摇晃动画
+        playPullSound();
+        const machine = document.getElementById("machine");
+        machine.classList.remove("shake"); // 先移除，防止连续拉杆时动画不重播
+        void machine.offsetWidth; // 强制浏览器重排一下（骗它"动画重新开始"的技巧）
+        machine.classList.add("shake");
+
+        // 先把"最终会停在什么"抽出来（概率核心！），再放动画
+        const finalSymbols = rollSymbols();
+        spinReels(finalSymbols);
+      }
+
+      /* ---------- 概率核心（纯随机版）----------
+         三个转轮各自独立随机抽一个符号，互相不影响，
+         就像真老虎机三个轮子各自转各自的，结果完全拼运气。 */
+      function rollSymbols() {
+        return [
+          SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)], // 第 1 轮
+          SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)], // 第 2 轮
+          SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)], // 第 3 轮
+        ];
+        // Math.random() 给 0~1 的小数，× 7 再向下取整 = 均匀地抽 0~6
+      }
+
+      /* ---------- 转轮动画：三个窗口依次停下（像真老虎机） ---------- */
+      function spinReels(finalSymbols) {
+        // 高频刷新：每 60ms 给"还没停"的转轮换一个随机符号
+        const rollTimer = setInterval(function () {
+          reels.forEach(function (reel, i) {
+            if (!reel.classList.contains("stopped")) {
+              reel.textContent =
+                SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+            }
+          });
+        }, 60);
+
+        // 三个转轮分别在 0.8s / 1.4s / 2.0s 停下
+        const stopDelays = [800, 1400, 2000];
+        stopDelays.forEach(function (delay, i) {
+          setTimeout(function () {
+            reels[i].textContent = finalSymbols[i]; // 停在预定结果上
+            reels[i].classList.add("stopped");
+            playTickSound(); // 每停一个转轮"嗒"一声
+            // 全停了 → 清理并结算
+            if (i === stopDelays.length - 1) {
+              clearInterval(rollTimer);
+              reels.forEach((r) => r.classList.remove("stopped", "spinning"));
+              settle(finalSymbols);
+            }
+          }, delay);
+        });
+
+        // 滚动开始时给每个窗口加上"滚动中"的样式
+        reels.forEach((r) => r.classList.add("spinning"));
+      }
+
+      /* ---------- 结算：判断中了没，给钱，出提示 ---------- */
+      function settle(symbols) {
+        spinning = false;
+        leverBtn.disabled = false;
+
+        let payout = 0; // 本次返还金额
+        let winType = ""; // 提示用文案
+
+        if (symbols[0] === symbols[1] && symbols[1] === symbols[2]) {
+          // 三个全同 → 查赔率表
+          payout = bet * TRIPLE_PAYOUT[symbols[0]];
+          winType = "三连 " + symbols[0] + " ×" + TRIPLE_PAYOUT[symbols[0]];
+        } else if (
+          symbols[0] === symbols[1] ||
+          symbols[1] === symbols[2] ||
+          symbols[0] === symbols[2]
+        ) {
+          // 恰好两个相同（左右相邻一对 / 右边一对 / 首尾各一 都算）
+          payout = bet * PAIR_PAYOUT;
+          // 找出"相同的那两个"里任意一个符号来展示
+          const pairSym =
+            symbols[0] === symbols[1]
+              ? symbols[0]
+              : symbols[1] === symbols[2]
+                ? symbols[1]
+                : symbols[0];
+          winType = "一对 " + pairSym + " ×2";
+        }
+
+        if (payout > 0) {
+          balance += payout;
+          winCount++;
+          // 中奖音效：欢快的上行琶音
+          playWinSound();
+          // 中奖动画：转轮弹跳 + 消息弹出
+          // 技巧：先移除 win 类并强制浏览器重排（offsetWidth），
+          // 再加回去，这样连续中奖时动画每次都会从头播放
+          reels.forEach((r) => r.classList.remove("win"));
+          void reels[0].offsetWidth;
+          message.classList.remove("win");
+          void message.offsetWidth;
+          message.textContent = "🎉 中奖！" + winType + "，返还 " + payout + "！";
+          message.classList.add("win");
+          reels.forEach((r) => r.classList.add("win")); // 绿光 + 弹跳
+          // 1.8 秒后收起动画（等三段弹跳依次播完）
+          setTimeout(() => reels.forEach((r) => r.classList.remove("win")), 1800);
+        } else {
+          message.textContent = "差一点～再来一次！";
+          message.className = "lose";
+          playLoseSound(); // 低沉的"噗"一声
+        }
+
+        renderStatus();
+        updateBetButtons(); // 余额变了，可能某些档要禁用/解禁
+
+        // 时间到或破产 → 结束游戏
+        if (balance < 10) {
+          endGame("💸 余额不足最低下注！");
+        } else if (Date.now() >= endTime) {
+          endGame("⏰ 时间到！");
+        }
+      }
+
+      /* =====================================================================
+         七、下注档位按钮
+         ===================================================================== */
+      betBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          noteActivity(); // 换档也算操作
+          bet = Number(btn.dataset.bet); // data-bet 属性里存着档位数
+          updateBetButtons();
+        });
+      });
+
+      // 刷新下注按钮状态：选中高亮 + 余额不够的档禁用
+      function updateBetButtons() {
+        betBtns.forEach(function (btn) {
+          const v = Number(btn.dataset.bet);
+          btn.classList.toggle("active", v === bet);
+          btn.disabled = v > balance;
+        });
+        leverBtn.disabled = spinning || !playing || balance < bet;
+      }
+
+      /* =====================================================================
+         八、"操作"记录：任何互动都重置闲置倒计时
+         ===================================================================== */
+      function noteActivity() {
+        if (!playing) return;
+        idleDeadline = Date.now() + idleThreshold;
+        idleWarning.hidden = true; // 有操作了，警告条收起来
+      }
+
+      // 点游戏面板任何地方都算"我在玩"（防止只盯屏幕不点按钮）
+      gameBox.addEventListener("click", noteActivity);
+      document.addEventListener("keydown", noteActivity);
+      document.addEventListener("mousemove", throttle(noteActivity, 2000)); // 鼠标动一动也算，但最多 2 秒记一次，防刷爆
+
+      // 节流工具函数：不管事件触发多频繁，fn 最多每 wait 毫秒执行一次
+      function throttle(fn, wait) {
+        let last = 0;
+        return function () {
+          const now = Date.now();
+          if (now - last >= wait) {
+            last = now;
+            fn();
+          }
+        };
+      }
+
+      /* =====================================================================
+         九、刷新状态栏显示
+         ===================================================================== */
+      function renderStatus() {
+        statBalance.textContent = balance;
+        const profit = balance - initMoney;
+        statProfit.textContent = (profit >= 0 ? "+" : "") + profit;
+        statProfit.className = "value " + (profit >= 0 ? "up" : "down");
+        updateBetButtons();
+      }
+
+      /* =====================================================================
+         十、结束游戏 + 结算面板
+         ===================================================================== */
+      function endGame(reason) {
+        if (!playing) return; // 防止重复结束
+        playing = false;
+        clearInterval(clockTimer); // 停掉时钟
+        clearTimeout(idleWarningTimer);
+        idleWarning.hidden = true;
+        leverBtn.disabled = true;
+
+        // 切到结算面板
+        gameBox.hidden = true;
+        resultBox.hidden = false;
+        resultReason.textContent = reason;
+        finalAmount.textContent = balance;
+
+        const profit = balance - initMoney;
+        const profitText =
+          (profit >= 0 ? "+" : "") + profit +
+          "（" +
+          (initMoney > 0 ? ((profit / initMoney) * 100).toFixed(1) : 0) +
+          "%）";
+        resultDetail.innerHTML =
+          "初始金额 " + initMoney +
+          " → 最终 " + balance +
+          "<br>盈亏：" + profitText +
+          "<br>共拉杆 " + spinCount + " 次，中奖 " + winCount + " 次";
+      }
+
+      /* =====================================================================
+         十一、再来一局：解锁设置，回到设置面板
+         ===================================================================== */
+      againBtn.addEventListener("click", function () {
+        moneyInput.disabled = false; // 重新允许修改设置
+        durationInput.disabled = false;
+        resultBox.hidden = true;
+        setupBox.hidden = false;
+      });
+    </script>
+  </body>
+</html>
